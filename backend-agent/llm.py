@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 import abc
+import asyncio
 import logging
 import os
 
@@ -15,6 +16,14 @@ import ollama
 
 from llm_response import Error, Filtered, LLMResponse, Success
 from status import status
+
+# Import threat detection system
+try:
+    from threat_detection import threat_detection_service
+    THREAT_DETECTION_AVAILABLE = True
+except ImportError:
+    THREAT_DETECTION_AVAILABLE = False
+    logger.warning("Threat detection system not available. Install required dependencies to enable threat detection.")
 
 set_proxy_version('gen-ai-hub')
 
@@ -217,6 +226,128 @@ class LLM(abc.ABC):
         # transparently for the return value.
         return response
 
+    async def _analyze_prompt_threats(self, messages: list) -> tuple[bool, str]:
+        """
+        Analyze prompt messages for threats using the threat detection system.
+        Returns (should_block, reason) tuple.
+        """
+        if not THREAT_DETECTION_AVAILABLE or not threat_detection_service.is_enabled():
+            return False, ""
+        
+        try:
+            # Convert messages to a single string for analysis
+            prompt_text = self._messages_to_text(messages)
+            context = {
+                'model_name': getattr(self, 'model_name', 'unknown'),
+                'model_type': str(self),
+                'analysis_type': 'prompt'
+            }
+            
+            # Run threat analysis
+            analysis_result = await threat_detection_service.analyze_prompt(prompt_text, context)
+            
+            # Check if we should block
+            should_block = threat_detection_service.should_block(analysis_result)
+            
+            if should_block:
+                threat_summary = f"Threats detected: {list(analysis_result.threat_types)} " \
+                               f"(confidence: {analysis_result.highest_confidence:.2f})"
+                return True, threat_summary
+            
+            return False, ""
+            
+        except Exception as e:
+            logger.error(f"Threat detection failed for prompt: {e}")
+            return False, ""
+
+    async def _analyze_response_threats(self, response_text: str) -> tuple[bool, str]:
+        """
+        Analyze model response for threats using the threat detection system.
+        Returns (should_block, reason) tuple.
+        """
+        if not THREAT_DETECTION_AVAILABLE or not threat_detection_service.is_enabled():
+            return False, ""
+        
+        try:
+            context = {
+                'model_name': getattr(self, 'model_name', 'unknown'),
+                'model_type': str(self),
+                'analysis_type': 'response'
+            }
+            
+            # Run threat analysis
+            analysis_result = await threat_detection_service.analyze_response(response_text, context)
+            
+            # Check if we should block
+            should_block = threat_detection_service.should_block(analysis_result)
+            
+            if should_block:
+                threat_summary = f"Threats detected: {list(analysis_result.threat_types)} " \
+                               f"(confidence: {analysis_result.highest_confidence:.2f})"
+                return True, threat_summary
+            
+            return False, ""
+            
+        except Exception as e:
+            logger.error(f"Threat detection failed for response: {e}")
+            return False, ""
+
+    def _messages_to_text(self, messages: list) -> str:
+        """Convert message list to a single text string for threat analysis."""
+        if isinstance(messages, str):
+            return messages
+        
+        text_parts = []
+        for message in messages:
+            if isinstance(message, dict):
+                role = message.get('role', '')
+                content = message.get('content', '')
+                if role and content:
+                    text_parts.append(f"{role}: {content}")
+                elif content:
+                    text_parts.append(content)
+            else:
+                text_parts.append(str(message))
+        
+        return "\n".join(text_parts)
+
+    def _run_with_threat_detection(self, messages: list, llm_call_func):
+        """
+        Wrapper to run LLM calls with threat detection.
+        This handles the async threat detection in a sync context.
+        """
+        # Check prompt threats
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        should_block_prompt, prompt_reason = loop.run_until_complete(
+            self._analyze_prompt_threats(messages)
+        )
+        
+        if should_block_prompt:
+            logger.warning(f"Prompt blocked by threat detection: {prompt_reason}")
+            return self._trace_llm_call(messages, Filtered(f"Prompt blocked by threat detection: {prompt_reason}"))
+        
+        # Execute the actual LLM call
+        response = llm_call_func()
+        
+        # If the response is successful, check response threats
+        if isinstance(response, Success) and response.text:
+            # Analyze the first response (or all responses concatenated)
+            response_text = response.text[0] if response.text else ""
+            should_block_response, response_reason = loop.run_until_complete(
+                self._analyze_response_threats(response_text)
+            )
+            
+            if should_block_response:
+                logger.warning(f"Response blocked by threat detection: {response_reason}")
+                return self._trace_llm_call(messages, Filtered(f"Response blocked by threat detection: {response_reason}"))
+        
+        return response
+
 
 class AICoreOpenAILLM(LLM):
     """
@@ -272,34 +403,39 @@ class AICoreOpenAILLM(LLM):
                                           frequency_penalty: float = 0.5,
                                           presence_penalty: float = 0.5,
                                           n: int = 1):
-        try:
-            if not self.uses_system_prompt:
-                if messages[0]['role'] == 'system':
-                    system_message = messages.pop(0)
-                    messages[0]['content'] = \
-                        f'{system_message["content"]}{messages[0]["content"]}'
-            response = self.client.chat.completions.create(
-                model_name=self.model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                n=n,
-                top_p=top_p,
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty)
-            responses = [response.choices[i].message.content for i in range(n)]
-        except InternalServerError as e:
-            logger.error(f'A HTTP server-side error occurred while calling '
-                         f'{self.model_name} model: {e}')
-            if 'gpt' in self.model_name:
-                logger.error("The completion triggered OpenAI's firewall")
-                return self._trace_llm_call(messages, Filtered(e))
-            else:
-                return self._trace_llm_call(messages, Error(e))
-        except Exception as e:
-            logger.error(f'An error occurred while calling the model: {e}')
-            return self._trace_llm_call(messages, Error(e))
-        return self._trace_llm_call(messages, Success(responses))
+        
+        def _execute_llm_call():
+            try:
+                if not self.uses_system_prompt:
+                    if messages[0]['role'] == 'system':
+                        system_message = messages.pop(0)
+                        messages[0]['content'] = \
+                            f'{system_message["content"]}{messages[0]["content"]}'
+                response = self.client.chat.completions.create(
+                    model_name=self.model_name,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    n=n,
+                    top_p=top_p,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty)
+                responses = [response.choices[i].message.content for i in range(n)]
+                return Success(responses)
+            except InternalServerError as e:
+                logger.error(f'A HTTP server-side error occurred while calling '
+                             f'{self.model_name} model: {e}')
+                if 'gpt' in self.model_name:
+                    logger.error("The completion triggered OpenAI's firewall")
+                    return Filtered(e)
+                else:
+                    return Error(e)
+            except Exception as e:
+                logger.error(f'An error occurred while calling the model: {e}')
+                return Error(e)
+        
+        # Use threat detection wrapper
+        return self._run_with_threat_detection(messages, _execute_llm_call)
 
 
 class LocalOpenAILLM(AICoreOpenAILLM):

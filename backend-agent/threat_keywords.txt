@@ -1,0 +1,43 @@
+# Custom Threat Detection Keywords
+# Lines starting with # are comments and will be ignored
+# Add one keyword per line
+
+# Common prompt injection attempts
+ignore previous instructions
+forget everything above
+system prompt
+jailbreak
+bypass
+override
+disregard
+new instructions
+act as
+pretend to be
+roleplay as
+
+# Potential harmful content indicators
+how to make
+step by step guide to
+instructions for creating
+tutorial on making
+
+# Social engineering attempts
+urgent request
+confidential information
+secret data
+private details
+personal information
+
+# Command injection attempts
+execute command
+run script
+shell access
+admin privileges
+root access
+
+# Data exfiltration attempts
+download file
+export data
+copy information
+send to external
+upload to server

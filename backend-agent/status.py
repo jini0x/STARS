@@ -180,6 +180,43 @@ provided. Skipping further status reports.')
         }
         self.trace['llm_messages'].append(message)
 
+    def trace_threat_detection(self,
+                              analysis_type: str,  # 'prompt' or 'response'
+                              content_hash: str,   # Hash of the content for privacy
+                              results: dict):      # Threat analysis results
+        """
+        Add threat detection analysis results to the trace.
+        """
+        if not hasattr(self, 'trace') or not self.trace:
+            return
+        
+        if 'threat_detections' not in self.trace:
+            self.trace['threat_detections'] = []
+        
+        threat_trace = {
+            'type': analysis_type,
+            'content_hash': content_hash,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'providers_used': results.get('providers_used', []),
+            'threats_detected': results.get('consensus_threat_detected', False),
+            'threat_types': list(results.get('threat_types', [])),
+            'highest_confidence': results.get('highest_confidence', 0.0),
+            'recommended_action': results.get('recommended_action', 'allow'),
+            'processing_time': results.get('processing_time', 0.0),
+            'individual_results': [
+                {
+                    'provider': r.get('provider', 'unknown'),
+                    'threat_detected': r.get('threat_detected', False),
+                    'confidence_score': r.get('confidence_score', 0.0),
+                    'threat_types': r.get('threat_types', []),
+                    'processing_time': r.get('processing_time', 0.0),
+                    'error': r.get('error')
+                }
+                for r in results.get('individual_results', [])
+            ]
+        }
+        self.trace['threat_detections'].append(threat_trace)
+
     def finish_trace(self, completed: bool, output: str):
         """
         Add some more information to the trace and write it to a file.

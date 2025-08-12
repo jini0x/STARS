@@ -1,0 +1,62 @@
+[
+  {
+    "pattern": "(?i)ignore\\s+(?:all\\s+)?(?:previous|prior)\\s+(?:instructions?|prompts?|commands?)",
+    "type": "prompt_injection",
+    "description": "Attempts to ignore previous instructions"
+  },
+  {
+    "pattern": "(?i)forget\\s+(?:everything|all)\\s+(?:above|before|prior)",
+    "type": "prompt_injection",
+    "description": "Attempts to forget previous context"
+  },
+  {
+    "pattern": "(?i)(?:act|pretend|roleplay)\\s+(?:as|like)\\s+(?:a\\s+)?(?:different|new|another)",
+    "type": "role_manipulation",
+    "description": "Attempts to change AI role or behavior"
+  },
+  {
+    "pattern": "(?i)(?:system|admin|root)\\s+(?:prompt|message|instruction)",
+    "type": "system_manipulation",
+    "description": "Attempts to access or modify system prompts"
+  },
+  {
+    "pattern": "(?i)(?:jailbreak|bypass|override|circumvent)\\s+(?:security|safety|restrictions?|limitations?)",
+    "type": "security_bypass",
+    "description": "Attempts to bypass security measures"
+  },
+  {
+    "pattern": "(?i)(?:execute|run|eval)\\s*\\([^)]*\\)",
+    "type": "code_injection",
+    "description": "Potential code execution attempts"
+  },
+  {
+    "pattern": "(?i)(?:curl|wget|fetch)\\s+(?:https?://|ftp://)",
+    "type": "network_access",
+    "description": "Attempts to access external resources"
+  },
+  {
+    "pattern": "(?i)(?:password|secret|token|key|credential)\\s*[:=]\\s*[\\w\\-_]{8,}",
+    "type": "credential_exposure",
+    "description": "Potential credential or secret exposure"
+  },
+  {
+    "pattern": "(?i)(?:sql|database|db)\\s+(?:injection|attack|exploit)",
+    "type": "sql_injection",
+    "description": "SQL injection attempts"
+  },
+  {
+    "pattern": "(?i)<script[^>]*>.*?</script>",
+    "type": "xss_attempt",
+    "description": "Cross-site scripting attempts"
+  },
+  {
+    "pattern": "(?i)(?:rm\\s+-rf|del\\s+/[sq]|format\\s+c:)",
+    "type": "destructive_command",
+    "description": "Potentially destructive system commands"
+  },
+  {
+    "pattern": "(?i)(?:base64|hex|url)\\s+(?:decode|encode)\\s*\\([^)]+\\)",
+    "type": "encoding_manipulation",
+    "description": "Encoding/decoding attempts to hide malicious content"
+  }
+]

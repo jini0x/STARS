@@ -24,3 +24,6 @@ textattack>=0.3.10
 codeattack @ git+https://github.com/marcorosa/CodeAttack
 gptfuzzer @ git+https://github.com/marcorosa/GPTFuzz@no-vllm
 Flask-SQLAlchemy==3.1.1
+aiohttp==3.9.1
+google-cloud-modelarmor
+google-auth>=2.0.0
