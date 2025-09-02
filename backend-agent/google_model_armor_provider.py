@@ -233,7 +233,7 @@ class GoogleModelArmorProvider(ThreatDetectionProvider):
                 'location': self.location,
                 'template_id': self.template_id,
                 'content_type': content_type,
-                'invocation_result': str(response.invocation_result),
+                'invocation_result': str(response.sanitization_result.invocation_result) if hasattr(response, 'invocation_result') else 'UNKNOWN',
                 'filter_results': {}
             }
             
@@ -324,14 +324,28 @@ class GoogleModelArmorProvider(ThreatDetectionProvider):
     
     def _confidence_level_to_score(self, confidence_level) -> float:
         """Convert Model Armor confidence level to numeric score."""
-        # Map confidence levels to numeric scores
+        # Convert confidence level to string and map to numeric scores
+        confidence_str = str(confidence_level).upper()
+        
         confidence_mapping = {
-            modelarmor_v1.ConfidenceLevel.HIGH: 0.9,
-            modelarmor_v1.ConfidenceLevel.MEDIUM: 0.6,
-            modelarmor_v1.ConfidenceLevel.LOW: 0.3,
-            modelarmor_v1.ConfidenceLevel.CONFIDENCE_LEVEL_UNSPECIFIED: 0.0
+            'HIGH': 0.9,
+            'MEDIUM': 0.6,
+            'LOW': 0.3,
+            'CONFIDENCE_LEVEL_UNSPECIFIED': 0.0,
+            'UNSPECIFIED': 0.0
         }
-        return confidence_mapping.get(confidence_level, 0.0)
+        
+        # Handle both enum values and string representations
+        if hasattr(confidence_level, 'name'):
+            confidence_str = confidence_level.name.upper()
+        elif 'HIGH' in confidence_str:
+            confidence_str = 'HIGH'
+        elif 'MEDIUM' in confidence_str:
+            confidence_str = 'MEDIUM'
+        elif 'LOW' in confidence_str:
+            confidence_str = 'LOW'
+        
+        return confidence_mapping.get(confidence_str, 0.0)
     
     def _simulate_threat_detection_fallback(self, content_type: str) -> Dict:
         """Fallback simulation when API parsing fails."""

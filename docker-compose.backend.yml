@@ -1,34 +1,24 @@
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:8080"
-    depends_on:
-      - backend
-    networks:
-      - stars-network
+version: '3.8'
 
-  backend:
+services:
+  stars-backend:
     build:
       context: ./backend-agent
       dockerfile: Dockerfile
+    container_name: stars-backend-2
     ports:
       - "8080:8080"
     env_file:
       - ./backend-agent/.env
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json
+    volumes:
+      - ~/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
+      - ./backend-agent:/app
+    working_dir: /app
     networks:
       - stars-network
-    volumes:
-      - stars-backend-db:/data
-      - ~/.config/gcloud/application_default_credentials.json:/gcp/creds.json:ro
 
 networks:
   stars-network:
     driver: bridge
-
-volumes:
-  stars-backend-db:
