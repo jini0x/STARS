@@ -36,6 +36,9 @@ dependencies = [
     'gptfuzzer @ git+https://github.com/marcorosa/GPTFuzz@no-vllm',
     'garak~=0.11.0',
     'sentence-transformers~=5.1.0',
+    'aiohttp==3.9.1',
+    'google-cloud-modelarmor',
+    'google-auth>=2.0.0'
 ]
 
 [project.optional-dependencies]
