@@ -31,14 +31,16 @@ ENV TORCH_INDEX_URL="https://download.pytorch.org/whl/cpu"
 RUN . ~/.cargo/env && \
     # Install dependencies with bytecode compilation for better performance
     uv sync --frozen --no-dev --no-cache --compile-bytecode && \
+    # Fix botocore.docs missing module issue by reinstalling botocore with docs
+    /app/.venv/bin/pip install --no-cache-dir --force-reinstall "botocore>=1.31.0" && \
     # Immediate cleanup of build artifacts during installation
     find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -name "*.pyc" -delete 2>/dev/null || true && \
     find /app/.venv -name "*.pyo" -delete 2>/dev/null || true && \
-    # Remove test files and documentation from packages (keeping runtime libs)
+    # Remove test files from packages but keep docs for botocore
     find /app/.venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
     find /app/.venv -type d -name "test" -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/.venv -type d -name "docs" -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.venv -type d -name "docs" -not -path "*/botocore/docs*" -exec rm -rf {} + 2>/dev/null || true && \
     # Strip debug symbols from shared libraries to reduce size
     find /app/.venv -name "*.so" -exec strip {} + 2>/dev/null || true && \
     # Aggressive cache and temporary file cleanup

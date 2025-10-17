@@ -56,7 +56,7 @@ class AttackSpecification:
             # Parameters to give to the attack
         },
         'target-model' : 'mistral'
-        'attack-model' : 'gpt-4',
+        'attack-model' : 'gpt-4o',
         'eval-model' : 'gpt-35-turbo' # Maybe empty
     }
 

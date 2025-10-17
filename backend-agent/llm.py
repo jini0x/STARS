@@ -15,6 +15,7 @@ import ollama
 
 from llm_response import Error, Filtered, LLMResponse, Success
 from status import status
+from security_gateway import get_security_gateway, SecurityAnalysisResult
 
 set_proxy_version('gen-ai-hub')
 
@@ -199,11 +200,86 @@ class LLM(abc.ABC):
         raise NotImplementedError
 
     def _trace_llm_call(self, prompt, response):
+        """
+        Trace LLM call with security analysis integration.
+        Analyzes both input prompts and output responses through security gateway.
+        """
+        # Get security gateway instance
+        security_gateway = get_security_gateway()
+        
+        # Prepare context for security analysis
+        context = {
+            "model_name": self.model_name if hasattr(self, 'model_name') else str(self),
+            "llm_provider": str(self),
+            "target_service": "llm"
+        }
+        
+        # Extract content for analysis
+        input_content = ""
+        if isinstance(prompt, list):
+            # Handle message-style prompts
+            input_content = "\n".join([
+                f"{msg.get('role', 'unknown')}: {msg.get('content', '')}" 
+                for msg in prompt if isinstance(msg, dict) and msg.get('content')
+            ])
+        elif isinstance(prompt, str):
+            input_content = prompt
+        else:
+            input_content = str(prompt)
+        
+        # Analyze input if there's content to analyze
+        input_analysis_result = None
+        if input_content.strip() and security_gateway.is_enabled():
+            input_analysis_result = security_gateway.analyze_input(
+                input_content, 
+                context
+            )
+            
+            # Log security events for input
+            if input_analysis_result.recommendation != "ALLOW":
+                security_gateway.log_security_event(
+                    "llm_input", 
+                    input_content, 
+                    input_analysis_result, 
+                    context
+                )
+        
+        # Analyze output if response is successful
+        output_analysis_result = None
+        if isinstance(response, Success) and response.responses and security_gateway.is_enabled():
+            # Analyze each response
+            for i, output_content in enumerate(response.responses):
+                if output_content and output_content.strip():
+                    output_context = {**context, "response_index": i}
+                    output_analysis_result = security_gateway.analyze_output(
+                        output_content,
+                        input_analysis_result.analysis_id if input_analysis_result else None,
+                        output_context
+                    )
+                    
+                    # Log security events for output
+                    if output_analysis_result.recommendation != "ALLOW":
+                        security_gateway.log_security_event(
+                            "llm_output", 
+                            output_content, 
+                            output_analysis_result, 
+                            output_context
+                        )
+                    
+                    # If output should be blocked, filter the response
+                    if output_analysis_result.recommendation == "BLOCK":
+                        logger.warning(f"Security Gateway blocked LLM output from {str(self)}")
+                        # Replace with filtered content if available, otherwise use generic message
+                        filtered_content = output_analysis_result.filtered_content or "[Content blocked by security policy]"
+                        response.responses[i] = filtered_content
+        
+        # Original tracing
         status.trace_llm(
             str(self),
             prompt,
             response
         )
+        
         # Return response as convenience so that this method can be used
         # transparently for the return value.
         return response

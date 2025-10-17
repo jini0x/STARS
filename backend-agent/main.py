@@ -1,7 +1,7 @@
 import json
 import os
 from argparse import Namespace
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,7 +16,10 @@ from attack import AttackSuite
 from attack_result import SuiteResult
 from status import LangchainStatusCallbackHandler, status
 
-__version__ = version('stars')
+try:
+    __version__ = version('stars')
+except PackageNotFoundError:
+    __version__ = '0.6.0'  # Fallback to pyproject.toml version
 load_dotenv()
 
 if not os.getenv('DISABLE_AGENT'):
