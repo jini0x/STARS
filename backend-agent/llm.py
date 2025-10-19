@@ -246,32 +246,49 @@ class LLM(abc.ABC):
         
         # Analyze output if response is successful
         output_analysis_result = None
-        if isinstance(response, Success) and response.responses and security_gateway.is_enabled():
-            # Analyze each response
-            for i, output_content in enumerate(response.responses):
-                if output_content and output_content.strip():
-                    output_context = {**context, "response_index": i}
-                    output_analysis_result = security_gateway.analyze_output(
-                        output_content,
-                        input_analysis_result.analysis_id if input_analysis_result else None,
-                        output_context
-                    )
-                    
-                    # Log security events for output
-                    if output_analysis_result.recommendation != "ALLOW":
-                        security_gateway.log_security_event(
-                            "llm_output", 
-                            output_content, 
-                            output_analysis_result, 
+        if isinstance(response, Success) and security_gateway.is_enabled():
+            # Get the response content - Success objects have different attribute names
+            response_content = None
+            if hasattr(response, 'responses') and response.responses:
+                response_content = response.responses
+            elif hasattr(response, 'response') and response.response:
+                response_content = [response.response] if isinstance(response.response, str) else response.response
+            elif hasattr(response, 'content') and response.content:
+                response_content = [response.content] if isinstance(response.content, str) else response.content
+            
+            # Analyze each response if we found content
+            if response_content:
+                for i, output_content in enumerate(response_content):
+                    if output_content and str(output_content).strip():
+                        output_context = {**context, "response_index": i}
+                        output_analysis_result = security_gateway.analyze_output(
+                            str(output_content),
+                            input_analysis_result.analysis_id if input_analysis_result else None,
                             output_context
                         )
-                    
-                    # If output should be blocked, filter the response
-                    if output_analysis_result.recommendation == "BLOCK":
-                        logger.warning(f"Security Gateway blocked LLM output from {str(self)}")
-                        # Replace with filtered content if available, otherwise use generic message
-                        filtered_content = output_analysis_result.filtered_content or "[Content blocked by security policy]"
-                        response.responses[i] = filtered_content
+                        
+                        # Log security events for output
+                        if output_analysis_result.recommendation != "ALLOW":
+                            security_gateway.log_security_event(
+                                "llm_output", 
+                                str(output_content), 
+                                output_analysis_result, 
+                                output_context
+                            )
+                        
+                        # If output should be blocked, filter the response
+                        if output_analysis_result.recommendation == "BLOCK":
+                            logger.warning(f"Security Gateway blocked LLM output from {str(self)}")
+                            # Replace with filtered content if available, otherwise use generic message
+                            filtered_content = output_analysis_result.filtered_content or "[Content blocked by security policy]"
+                            
+                            # Update the response content based on the attribute structure
+                            if hasattr(response, 'responses') and response.responses:
+                                response.responses[i] = filtered_content
+                            elif hasattr(response, 'response'):
+                                response.response = filtered_content
+                            elif hasattr(response, 'content'):
+                                response.content = filtered_content
         
         # Original tracing
         status.trace_llm(

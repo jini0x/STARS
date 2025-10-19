@@ -15,6 +15,7 @@ from app.db.models import Attack, ModelAttackScore, TargetModel, db
 from attack import AttackSuite
 from attack_result import SuiteResult
 from status import LangchainStatusCallbackHandler, status
+from security_gateway import get_security_gateway
 
 try:
     __version__ = version('stars')
@@ -322,6 +323,79 @@ def execute_all_attacks():
         return jsonify(result_return)
     except Exception as e:
         return jsonify({'error': f'Failed to run attacks: {str(e)}'}), 500
+
+
+# Security Gateway API endpoints
+@app.route('/api/security/status', methods=['GET'])
+def get_security_status():
+    """
+    Get comprehensive status of the security gateway
+    """
+    try:
+        security_gateway = get_security_gateway()
+        return jsonify(security_gateway.get_status()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/security/mode', methods=['GET'])
+def get_security_mode():
+    """
+    Get current security gateway mode
+    """
+    try:
+        security_gateway = get_security_gateway()
+        return jsonify({
+            'mode': security_gateway.get_mode(),
+            'description': security_gateway.MODES.get(security_gateway.get_mode(), 'Unknown')
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/security/mode', methods=['POST'])
+def set_security_mode():
+    """
+    Set security gateway mode at runtime
+    Expected JSON body: {"mode": "monitor|enforce|disabled|audit"}
+    """
+    try:
+        data = request.get_json()
+        if not data or 'mode' not in data:
+            return jsonify({'error': 'Mode parameter is required'}), 400
+        
+        security_gateway = get_security_gateway()
+        success = security_gateway.set_mode(data['mode'])
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'mode': security_gateway.get_mode(),
+                'description': security_gateway.MODES.get(security_gateway.get_mode(), 'Unknown'),
+                'message': f'Security mode changed to {security_gateway.get_mode()}'
+            }), 200
+        else:
+            return jsonify({
+                'error': f'Invalid mode. Valid modes: {list(security_gateway.MODES.keys())}'
+            }), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/security/modes', methods=['GET'])
+def get_available_security_modes():
+    """
+    Get all available security modes with descriptions
+    """
+    try:
+        security_gateway = get_security_gateway()
+        return jsonify({
+            'modes': security_gateway.get_available_modes(),
+            'current_mode': security_gateway.get_mode()
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

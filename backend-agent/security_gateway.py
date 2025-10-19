@@ -19,7 +19,15 @@ class SecurityAnalysisResult:
     error: Optional[str] = None
 
 class SecurityGateway:
-    """Client for the Detection Middleware Gateway API"""
+    """Client for the Detection Middleware Gateway API with dynamic mode switching"""
+    
+    # Available security modes
+    MODES = {
+        'disabled': 'No security analysis performed',
+        'monitor': 'Log all interactions, never block content',
+        'enforce': 'Analyze and block/filter based on policies',
+        'audit': 'Enhanced logging with detailed analysis'
+    }
     
     def __init__(self, base_url: str = None, application_id: str = "stars-backend"):
         self.base_url = base_url or os.getenv('SECURITY_GATEWAY_URL', 'http://localhost:8000/api/v1')
@@ -27,14 +35,60 @@ class SecurityGateway:
         self.enabled = os.getenv('SECURITY_GATEWAY_ENABLED', 'true').lower() == 'true'
         self.timeout = int(os.getenv('SECURITY_GATEWAY_TIMEOUT', '10'))
         
+        # Initialize mode - can be changed at runtime
+        self._mode = os.getenv('SECURITY_GATEWAY_MODE', 'monitor').lower()
+        if self._mode not in self.MODES:
+            logger.warning(f"Invalid security mode '{self._mode}', defaulting to 'monitor'")
+            self._mode = 'monitor'
+        
         if self.enabled:
-            logger.info(f"Security Gateway initialized: {self.base_url}")
+            logger.info(f"Security Gateway initialized: {self.base_url} (mode: {self._mode})")
         else:
             logger.info("Security Gateway disabled")
     
     def is_enabled(self) -> bool:
         """Check if security gateway is enabled"""
-        return self.enabled
+        return self.enabled and self._mode != 'disabled'
+    
+    def get_mode(self) -> str:
+        """Get current security mode"""
+        return self._mode
+    
+    def set_mode(self, mode: str) -> bool:
+        """
+        Set security mode at runtime
+        
+        Args:
+            mode: One of 'disabled', 'monitor', 'enforce', 'audit'
+            
+        Returns:
+            True if mode was set successfully, False otherwise
+        """
+        mode = mode.lower()
+        if mode not in self.MODES:
+            logger.error(f"Invalid security mode '{mode}'. Valid modes: {list(self.MODES.keys())}")
+            return False
+        
+        old_mode = self._mode
+        self._mode = mode
+        logger.info(f"Security Gateway mode changed from '{old_mode}' to '{mode}'")
+        return True
+    
+    def get_available_modes(self) -> Dict[str, str]:
+        """Get all available security modes with descriptions"""
+        return self.MODES.copy()
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get comprehensive status of security gateway"""
+        return {
+            "enabled": self.enabled,
+            "mode": self._mode,
+            "mode_description": self.MODES.get(self._mode, "Unknown"),
+            "base_url": self.base_url,
+            "application_id": self.application_id,
+            "timeout": self.timeout,
+            "available_modes": self.MODES
+        }
     
     def analyze_input(self, content: str, context: Dict[str, Any] = None) -> SecurityAnalysisResult:
         """
@@ -47,52 +101,68 @@ class SecurityGateway:
         Returns:
             SecurityAnalysisResult with analysis results
         """
-        if not self.enabled:
+        # Handle different modes
+        if not self.enabled or self._mode == 'disabled':
             return SecurityAnalysisResult(recommendation="ALLOW")
         
-        try:
-            payload = {
-                "content": content,
-                "application_id": self.application_id,
-                "analysis_type": "input",
-                **(context or {})
-            }
-            
-            response = requests.post(
-                f"{self.base_url}/analyze/input",
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=self.timeout
+        # For monitor and audit modes, always allow but log
+        if self._mode in ['monitor', 'audit']:
+            try:
+                # Still perform analysis for logging purposes
+                result = self._perform_analysis(content, "input", context)
+                # Override recommendation to always allow in monitor mode
+                result.recommendation = "ALLOW"
+                # Log the event
+                self.log_security_event("llm_input", content, result, context)
+                return result
+            except Exception as e:
+                logger.warning(f"Security gateway monitoring error: {e}")
+                return SecurityAnalysisResult(recommendation="ALLOW", error=str(e))
+        
+        # For enforce mode, perform full analysis and respect recommendations
+        elif self._mode == 'enforce':
+            try:
+                result = self._perform_analysis(content, "input", context)
+                self.log_security_event("llm_input", content, result, context)
+                return result
+            except Exception as e:
+                logger.warning(f"Security gateway enforcement error: {e}")
+                return SecurityAnalysisResult(recommendation="ALLOW", error=str(e))
+        
+        # Fallback
+        return SecurityAnalysisResult(recommendation="ALLOW")
+    
+    def _perform_analysis(self, content: str, analysis_type: str, context: Dict[str, Any] = None) -> SecurityAnalysisResult:
+        """Internal method to perform the actual security analysis"""
+        payload = {
+            "content": content,
+            "application_id": self.application_id,
+            "analysis_type": analysis_type,
+            **(context or {})
+        }
+        
+        response = requests.post(
+            f"{self.base_url}/analyze/{analysis_type}",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=self.timeout
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return SecurityAnalysisResult(
+                recommendation=data.get("recommendation", "ALLOW"),
+                analysis_id=data.get("analysis_id"),
+                risk_score=data.get("risk_score"),
+                threats_detected=data.get("threats_detected", []),
+                policy_violations=data.get("policy_violations", []),
+                filtered_content=data.get("filtered_content")
             )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return SecurityAnalysisResult(
-                    recommendation=data.get("recommendation", "ALLOW"),
-                    analysis_id=data.get("analysis_id"),
-                    risk_score=data.get("risk_score"),
-                    threats_detected=data.get("threats_detected", []),
-                    policy_violations=data.get("policy_violations", []),
-                    filtered_content=data.get("filtered_content")
-                )
-            else:
-                logger.warning(f"Security gateway input analysis failed: {response.status_code}")
-                return SecurityAnalysisResult(
-                    recommendation="ALLOW",
-                    error=f"HTTP {response.status_code}: {response.text}"
-                )
-                
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Security gateway input analysis error: {e}")
+        else:
+            logger.warning(f"Security gateway {analysis_type} analysis failed: {response.status_code}")
             return SecurityAnalysisResult(
                 recommendation="ALLOW",
-                error=str(e)
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error in input analysis: {e}")
-            return SecurityAnalysisResult(
-                recommendation="ALLOW",
-                error=str(e)
+                error=f"HTTP {response.status_code}: {response.text}"
             )
     
     def analyze_output(self, content: str, input_analysis_id: Optional[str] = None, 
@@ -108,55 +178,73 @@ class SecurityGateway:
         Returns:
             SecurityAnalysisResult with analysis results
         """
-        if not self.enabled:
+        # Handle different modes
+        if not self.enabled or self._mode == 'disabled':
             return SecurityAnalysisResult(recommendation="ALLOW")
         
-        try:
-            payload = {
-                "content": content,
-                "application_id": self.application_id,
-                "analysis_type": "output",
-                **(context or {})
-            }
-            
-            if input_analysis_id:
-                payload["input_analysis_id"] = input_analysis_id
-            
-            response = requests.post(
-                f"{self.base_url}/analyze/output",
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=self.timeout
+        # For monitor and audit modes, always allow but log
+        if self._mode in ['monitor', 'audit']:
+            try:
+                # Still perform analysis for logging purposes
+                result = self._perform_analysis_with_context(content, "output", input_analysis_id, context)
+                # Override recommendation to always allow in monitor mode
+                result.recommendation = "ALLOW"
+                # Log the event
+                self.log_security_event("llm_output", content, result, context)
+                return result
+            except Exception as e:
+                logger.warning(f"Security gateway monitoring error: {e}")
+                return SecurityAnalysisResult(recommendation="ALLOW", error=str(e))
+        
+        # For enforce mode, perform full analysis and respect recommendations
+        elif self._mode == 'enforce':
+            try:
+                result = self._perform_analysis_with_context(content, "output", input_analysis_id, context)
+                self.log_security_event("llm_output", content, result, context)
+                return result
+            except Exception as e:
+                logger.warning(f"Security gateway enforcement error: {e}")
+                return SecurityAnalysisResult(recommendation="ALLOW", error=str(e))
+        
+        # Fallback
+        return SecurityAnalysisResult(recommendation="ALLOW")
+    
+    def _perform_analysis_with_context(self, content: str, analysis_type: str, 
+                                     input_analysis_id: Optional[str] = None,
+                                     context: Dict[str, Any] = None) -> SecurityAnalysisResult:
+        """Internal method to perform security analysis with additional context"""
+        payload = {
+            "content": content,
+            "application_id": self.application_id,
+            "analysis_type": analysis_type,
+            **(context or {})
+        }
+        
+        if input_analysis_id:
+            payload["input_analysis_id"] = input_analysis_id
+        
+        response = requests.post(
+            f"{self.base_url}/analyze/{analysis_type}",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=self.timeout
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return SecurityAnalysisResult(
+                recommendation=data.get("recommendation", "ALLOW"),
+                analysis_id=data.get("analysis_id"),
+                risk_score=data.get("risk_score"),
+                threats_detected=data.get("threats_detected", []),
+                policy_violations=data.get("policy_violations", []),
+                filtered_content=data.get("filtered_content")
             )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return SecurityAnalysisResult(
-                    recommendation=data.get("recommendation", "ALLOW"),
-                    analysis_id=data.get("analysis_id"),
-                    risk_score=data.get("risk_score"),
-                    threats_detected=data.get("threats_detected", []),
-                    policy_violations=data.get("policy_violations", []),
-                    filtered_content=data.get("filtered_content")
-                )
-            else:
-                logger.warning(f"Security gateway output analysis failed: {response.status_code}")
-                return SecurityAnalysisResult(
-                    recommendation="ALLOW",
-                    error=f"HTTP {response.status_code}: {response.text}"
-                )
-                
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Security gateway output analysis error: {e}")
+        else:
+            logger.warning(f"Security gateway {analysis_type} analysis failed: {response.status_code}")
             return SecurityAnalysisResult(
                 recommendation="ALLOW",
-                error=str(e)
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error in output analysis: {e}")
-            return SecurityAnalysisResult(
-                recommendation="ALLOW",
-                error=str(e)
+                error=f"HTTP {response.status_code}: {response.text}"
             )
     
     def log_security_event(self, event_type: str, content: str, result: SecurityAnalysisResult, 
