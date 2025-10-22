@@ -1,5 +1,5 @@
 import { APIResponse, ReportItem } from '../types/API';
-import { AfterViewChecked, AfterViewInit, Component, ElementRef, QueryList, ViewChildren, inject } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, QueryList, ViewChildren, inject, OnInit, OnDestroy } from '@angular/core';
 import { ChatItem, Message, ReportCard, VulnerabilityReportCard } from '../types/ChatItem';
 import { Status, Step } from '../types/Step';
 
@@ -10,6 +10,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MaterialModule } from '../material.module';
 import { VulnerabilityInfoService } from '../services/vulnerability-information.service';
 import { WebSocketService } from '../services/web-socket.service';
+import { SecurityGatewayService, SecurityGatewayStatus } from '../services/security-gateway.service';
+import { Subject, takeUntil, timer } from 'rxjs';
 
 @Component({
   selector: 'app-chatzone',
@@ -18,17 +20,20 @@ import { WebSocketService } from '../services/web-socket.service';
   imports: [MaterialModule, MarkdownModule, MatProgressBarModule, FormsModule, CommonModule],
   standalone: true,
 })
-export class ChatzoneComponent implements AfterViewInit, AfterViewChecked {
+export class ChatzoneComponent implements AfterViewInit, AfterViewChecked, OnInit, OnDestroy {
   private ws = inject(WebSocketService);
   private vis = inject(VulnerabilityInfoService);
+  private securityGatewayService = inject(SecurityGatewayService);
+  private destroy$ = new Subject<void>();
 
   chatItems: ChatItem[];
-
   steps: Step[];
   errorMessage: string;
   inputValue: string;
   apiKey: string;
   progress: number | undefined;
+  securityStatus: SecurityGatewayStatus | null = null;
+
   constructor() {
     this.inputValue = '';
     this.apiKey = localStorage.getItem('key') || '';
@@ -52,6 +57,47 @@ export class ChatzoneComponent implements AfterViewInit, AfterViewChecked {
     });
 
     this.restoreChatItems();
+  }
+
+  ngOnInit(): void {
+    // Load security status on component initialization
+    this.loadSecurityStatus();
+    
+    // Auto-refresh security status every 60 seconds
+    timer(0, 60000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadSecurityStatus();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private loadSecurityStatus(): void {
+    this.securityGatewayService.getStatus()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (status) => {
+          this.securityStatus = status;
+        },
+        error: (error) => {
+          // Silently fail - security status is optional
+          console.warn('Failed to load security status:', error);
+          this.securityStatus = null;
+        }
+      });
+  }
+
+  // Security status helper methods
+  getSecurityStatusColor(mode: string): string {
+    return this.securityGatewayService.getStatusColor(mode);
+  }
+
+  getSecurityStatusIcon(mode: string): string {
+    return this.securityGatewayService.getStatusIcon(mode);
   }
 
   // Handling of the websocket connection
@@ -306,5 +352,10 @@ export class ChatzoneComponent implements AfterViewInit, AfterViewChecked {
   // openDashboard() that loads a new page with the dashboard at the route /heatmap
   openDashboard(): void {
     window.open('/heatmap', '_blank');
+  }
+
+  // openSecurityGateway() that loads a new page with the security gateway at the route /security
+  openSecurityGateway(): void {
+    window.open('/security', '_blank');
   }
 }

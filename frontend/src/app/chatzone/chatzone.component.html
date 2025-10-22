@@ -2,6 +2,13 @@
   <div class="center">
     <span>STARS Agent</span>
   </div>
+  <div class="security-status" *ngIf="securityStatus">
+    <mat-icon 
+      [style.color]="getSecurityStatusColor(securityStatus.mode)"
+      [matTooltip]="'Security Gateway: ' + securityStatus.mode.toUpperCase() + ' - ' + securityStatus.mode_description">
+      {{ getSecurityStatusIcon(securityStatus.mode) }}
+    </mat-icon>
+  </div>
 </div>
 <div class="main-content">
   <div class="status-report-container container">
@@ -31,6 +38,9 @@
       <div class="padding-top">
         <!-- <button mat-raised-button (click)="openDashboard()">Open Risk Dashboard</button> -->
         <button mat-raised-button (click)="openDashboard()" class="left-panel-button">Risk Dashboard</button>
+      </div>
+      <div class="padding-top">
+        <button mat-raised-button (click)="openSecurityGateway()" class="left-panel-button">Security Gateway</button>
       </div>
     </div>
   </div>

@@ -1,0 +1,322 @@
+<div class="security-gateway-container">
+  <!-- Header -->
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>security</mat-icon>
+        Security Gateway Configuration
+      </mat-card-title>
+      <mat-card-subtitle>
+        Configure and monitor your AI Security Gateway
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-actions align="end">
+      <button mat-button (click)="refreshAll()" [disabled]="loading.status || loading.config">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <div class="content-grid">
+    <!-- Status Panel -->
+    <mat-card class="status-card">
+      <mat-card-header>
+        <mat-card-title>Gateway Status</mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div *ngIf="loading.status" class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <span>Loading status...</span>
+        </div>
+        
+        <div *ngIf="!loading.status && status" class="status-content">
+          <!-- Overall Status -->
+          <div class="status-item">
+            <mat-icon [style.color]="status.enabled ? 'green' : 'gray'">
+              {{ status.enabled ? 'check_circle' : 'cancel' }}
+            </mat-icon>
+            <span class="status-label">Gateway:</span>
+            <span class="status-value">{{ status.enabled ? 'ENABLED' : 'DISABLED' }}</span>
+          </div>
+
+          <!-- Current Mode -->
+          <div class="status-item">
+            <mat-icon [style.color]="getStatusColor(status.mode)">
+              {{ getStatusIcon(status.mode) }}
+            </mat-icon>
+            <span class="status-label">Mode:</span>
+            <mat-chip [style.background-color]="getStatusColor(status.mode)" [style.color]="'white'">
+              {{ status.mode.toUpperCase() }}
+            </mat-chip>
+          </div>
+
+          <!-- Mode Description -->
+          <div class="mode-description">
+            <mat-icon>info</mat-icon>
+            <span>{{ status.mode_description }}</span>
+          </div>
+
+          <!-- Connection Test Result -->
+          <div *ngIf="connectionTest" class="connection-test-result">
+            <mat-divider></mat-divider>
+            <div class="status-item">
+              <mat-icon [style.color]="getConnectionStatusColor(connectionTest.status)">
+                {{ getConnectionStatusIcon(connectionTest.status) }}
+              </mat-icon>
+              <span class="status-label">Connection:</span>
+              <span class="status-value">{{ connectionTest.status.toUpperCase() }}</span>
+              <span *ngIf="connectionTest.response_time_ms" class="response-time">
+                ({{ Math.round(connectionTest.response_time_ms) }}ms)
+              </span>
+            </div>
+            <div *ngIf="connectionTest.error" class="error-message">
+              {{ connectionTest.error }}
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!loading.status && !status" class="error-state">
+          <mat-icon color="warn">error</mat-icon>
+          <span>Failed to load gateway status</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Configuration Panel -->
+    <mat-card class="config-card">
+      <mat-card-header>
+        <mat-card-title>Configuration</mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div *ngIf="loading.config" class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <span>Loading configuration...</span>
+        </div>
+
+        <form *ngIf="!loading.config" [formGroup]="configForm" class="config-form">
+          <!-- Gateway URL -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Gateway URL</mat-label>
+            <input matInput formControlName="base_url" placeholder="http://localhost:8000/api/v1">
+            <mat-icon matSuffix>link</mat-icon>
+            <mat-error *ngIf="configForm.get('base_url')?.hasError('required')">
+              Gateway URL is required
+            </mat-error>
+            <mat-error *ngIf="configForm.get('base_url')?.hasError('invalidUrl')">
+              Please enter a valid HTTP/HTTPS URL
+            </mat-error>
+            <mat-hint>The base URL of your security gateway service</mat-hint>
+          </mat-form-field>
+
+          <!-- Application ID -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Application ID</mat-label>
+            <input matInput formControlName="application_id" placeholder="stars-backend">
+            <mat-icon matSuffix>badge</mat-icon>
+            <mat-error *ngIf="configForm.get('application_id')?.hasError('required')">
+              Application ID is required
+            </mat-error>
+            <mat-hint>Unique identifier for this application</mat-hint>
+          </mat-form-field>
+
+          <!-- Timeout -->
+          <mat-form-field appearance="outline" class="timeout-field">
+            <mat-label>Timeout (seconds)</mat-label>
+            <input matInput type="number" formControlName="timeout" min="1" max="300">
+            <mat-icon matSuffix>schedule</mat-icon>
+            <mat-error *ngIf="configForm.get('timeout')?.hasError('required')">
+              Timeout is required
+            </mat-error>
+            <mat-error *ngIf="configForm.get('timeout')?.hasError('min')">
+              Minimum timeout is 1 second
+            </mat-error>
+            <mat-error *ngIf="configForm.get('timeout')?.hasError('max')">
+              Maximum timeout is 300 seconds
+            </mat-error>
+            <mat-hint>Request timeout for gateway calls</mat-hint>
+          </mat-form-field>
+
+          <!-- Enable/Disable Toggle -->
+          <div class="toggle-section">
+            <mat-slide-toggle formControlName="enabled" color="primary">
+              <span class="toggle-label">Enable Security Gateway</span>
+            </mat-slide-toggle>
+            <mat-hint>Toggle to enable or disable the security gateway</mat-hint>
+          </div>
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-button 
+                (click)="testConnection()" 
+                [disabled]="loading.testConnection || configForm.get('base_url')?.invalid">
+          <mat-spinner *ngIf="loading.testConnection" diameter="20"></mat-spinner>
+          <mat-icon *ngIf="!loading.testConnection">wifi</mat-icon>
+          Test Connection
+        </button>
+        
+        <button mat-raised-button 
+                color="primary" 
+                (click)="updateConfiguration()" 
+                [disabled]="loading.updateConfig || configForm.invalid || !isFormChanged()">
+          <mat-spinner *ngIf="loading.updateConfig" diameter="20"></mat-spinner>
+          <mat-icon *ngIf="!loading.updateConfig">save</mat-icon>
+          Apply Changes
+        </button>
+        
+        <button mat-button 
+                (click)="resetForm()" 
+                [disabled]="!isFormChanged()">
+          <mat-icon>undo</mat-icon>
+          Reset
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Security Mode Panel -->
+    <mat-card class="mode-card">
+      <mat-card-header>
+        <mat-card-title>Security Mode</mat-card-title>
+        <mat-card-subtitle>Choose how the security gateway operates</mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div *ngIf="getModeKeys().length > 0" class="mode-selection">
+          <mat-radio-group 
+            [value]="status?.mode || 'monitor'" 
+            (change)="changeMode($event.value)"
+            [disabled]="loading.changeMode">
+            
+            <mat-radio-button 
+              *ngFor="let mode of getModeKeys()" 
+              [value]="mode" 
+              class="mode-option">
+              <div class="mode-content">
+                <div class="mode-header">
+                  <mat-icon [style.color]="getStatusColor(mode)">
+                    {{ getStatusIcon(mode) }}
+                  </mat-icon>
+                  <span class="mode-name">{{ mode.toUpperCase() }}</span>
+                </div>
+                <div class="mode-description">
+                  {{ availableModes[mode] }}
+                </div>
+              </div>
+            </mat-radio-button>
+          </mat-radio-group>
+
+          <div *ngIf="loading.changeMode" class="mode-loading">
+            <mat-spinner diameter="30"></mat-spinner>
+            <span>Changing security mode...</span>
+          </div>
+        </div>
+
+        <div *ngIf="getModeKeys().length === 0" class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <span>Loading available modes...</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Security Policy Panel -->
+    <mat-card class="policy-card">
+      <mat-card-header>
+        <mat-card-title>Security Policy</mat-card-title>
+        <mat-card-subtitle>Choose the analysis depth and performance trade-off</mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div *ngIf="loading.policies" class="loading-container">
+          <mat-spinner diameter="40"></mat-spinner>
+          <span>Loading available policies...</span>
+        </div>
+
+        <div *ngIf="!loading.policies && getPolicyKeys().length > 0" class="policy-selection">
+          <mat-radio-group 
+            [value]="currentPolicy" 
+            (change)="changePolicy($event.value)">
+            
+            <mat-radio-button 
+              *ngFor="let policyKey of getPolicyKeys()" 
+              [value]="policyKey" 
+              class="policy-option">
+              <div class="policy-content">
+                <div class="policy-header">
+                  <mat-icon [color]="getPolicyColor(policyKey)">
+                    {{ policyKey === 'enhanced' ? 'security' : 'speed' }}
+                  </mat-icon>
+                  <span class="policy-name">{{ availablePolicies[policyKey].name }}</span>
+                </div>
+                <div class="policy-description">
+                  {{ availablePolicies[policyKey].description }}
+                </div>
+                <div class="policy-details">
+                  <div class="policy-detail">
+                    <strong>Performance:</strong> {{ availablePolicies[policyKey].performance }}
+                  </div>
+                  <div class="policy-detail">
+                    <strong>Coverage:</strong> {{ availablePolicies[policyKey].coverage }}
+                  </div>
+                  <div class="policy-detail">
+                    <strong>Modules:</strong> {{ availablePolicies[policyKey].modules.join(', ') }}
+                  </div>
+                  <div class="policy-detail">
+                    <strong>Use Case:</strong> {{ availablePolicies[policyKey].use_case }}
+                  </div>
+                </div>
+              </div>
+            </mat-radio-button>
+          </mat-radio-group>
+        </div>
+
+        <div *ngIf="!loading.policies && getPolicyKeys().length === 0" class="error-state">
+          <mat-icon color="warn">error</mat-icon>
+          <span>No policies available</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Quick Actions -->
+  <mat-card class="actions-card">
+    <mat-card-header>
+      <mat-card-title>Quick Actions</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="quick-actions">
+        <button mat-stroked-button 
+                (click)="changeMode('disabled')" 
+                [disabled]="loading.changeMode || status?.mode === 'disabled'">
+          <mat-icon>block</mat-icon>
+          Disable Gateway
+        </button>
+        
+        <button mat-stroked-button 
+                (click)="changeMode('monitor')" 
+                [disabled]="loading.changeMode || status?.mode === 'monitor'">
+          <mat-icon>visibility</mat-icon>
+          Monitor Mode
+        </button>
+        
+        <button mat-stroked-button 
+                (click)="changeMode('enforce')" 
+                [disabled]="loading.changeMode || status?.mode === 'enforce'">
+          <mat-icon>security</mat-icon>
+          Enforce Mode
+        </button>
+        
+        <button mat-stroked-button 
+                (click)="testConnection()" 
+                [disabled]="loading.testConnection">
+          <mat-icon>wifi</mat-icon>
+          Test Current Config
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

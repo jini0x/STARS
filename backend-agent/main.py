@@ -398,6 +398,130 @@ def get_available_security_modes():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/security/config', methods=['GET'])
+def get_security_config():
+    """
+    Get current security gateway configuration
+    """
+    try:
+        security_gateway = get_security_gateway()
+        return jsonify(security_gateway.get_config()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/security/config', methods=['POST'])
+def update_security_config():
+    """
+    Update security gateway configuration
+    Expected JSON body: {
+        "base_url": "http://localhost:8000/api/v1",
+        "timeout": 10,
+        "application_id": "stars-backend",
+        "enabled": true,
+        "mode": "monitor"
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No configuration data provided'}), 400
+        
+        security_gateway = get_security_gateway()
+        results = security_gateway.update_config(data)
+        
+        # Check if any updates failed
+        failed_updates = {key: result for key, result in results.items() if not result}
+        successful_updates = {key: result for key, result in results.items() if result}
+        
+        response = {
+            'status': 'success' if not failed_updates else 'partial_success',
+            'successful_updates': list(successful_updates.keys()),
+            'failed_updates': list(failed_updates.keys()) if failed_updates else [],
+            'current_config': security_gateway.get_config(),
+            'message': f'Updated {len(successful_updates)} configuration settings'
+        }
+        
+        if failed_updates:
+            response['message'] += f', {len(failed_updates)} failed'
+        
+        return jsonify(response), 200 if not failed_updates else 207  # 207 = Multi-Status
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/security/test-connection', methods=['POST'])
+def test_security_connection():
+    """
+    Test connectivity to the security gateway
+    Optional JSON body: {
+        "url": "http://localhost:8000/api/v1"  // Test specific URL without changing config
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        security_gateway = get_security_gateway()
+        
+        # If a specific URL is provided, test that URL without changing the config
+        if 'url' in data:
+            # Create a temporary gateway instance for testing
+            from security_gateway import SecurityGateway
+            temp_gateway = SecurityGateway(
+                base_url=data['url'],
+                application_id=security_gateway.application_id
+            )
+            temp_gateway.timeout = security_gateway.timeout
+            temp_gateway.enabled = True  # Enable for testing
+            result = temp_gateway.test_connection()
+        else:
+            # Test current configuration
+            result = security_gateway.test_connection()
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+
+@app.route('/api/security/policies', methods=['GET'])
+def get_available_policies():
+    """
+    Get available security policies with descriptions
+    """
+    try:
+        policies = {
+            "default": {
+                "name": "Default Policy",
+                "description": "Basic threat detection with local analysis",
+                "modules": ["enhanced_analyzer"],
+                "performance": "Very fast (<10ms)",
+                "coverage": "Core security patterns",
+                "use_case": "Development and basic protection"
+            },
+            "enhanced": {
+                "name": "Enhanced Policy", 
+                "description": "Comprehensive analysis with external AI safety services",
+                "modules": ["enhanced_analyzer", "google_model_armor"],
+                "performance": "Moderate (50-200ms)",
+                "coverage": "Advanced AI safety analysis",
+                "use_case": "Production environments requiring comprehensive security"
+            }
+        }
+        
+        return jsonify({
+            'policies': policies,
+            'default_policy': 'default'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     if not os.getenv('API_KEY'):
         print('No API key is set! Access is unrestricted.')
