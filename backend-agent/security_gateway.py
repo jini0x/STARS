@@ -45,7 +45,7 @@ class SecurityGateway:
         'audit': 'Enhanced logging with detailed analysis'
     }
     
-    def __init__(self, base_url: str = None, application_id: str = "stars-backend"):
+    def __init__(self, base_url: str = None, application_id: str = "benchmark_stars"):
         self.base_url = base_url or os.getenv('SECURITY_GATEWAY_URL', 'http://localhost:8000/api/v1')
         self.application_id = application_id
         self.enabled = os.getenv('SECURITY_GATEWAY_ENABLED', 'true').lower() == 'true'
