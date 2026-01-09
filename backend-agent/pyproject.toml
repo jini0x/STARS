@@ -13,9 +13,9 @@ maintainers = [
 ]
 requires-python = '>=3.10,<3.13'
 dependencies = [
-    'sap-ai-sdk-gen[all]==5.9.0',
+    'sap-ai-sdk-gen[all]==5.10.0',
     'python-dotenv==1.2.1',
-    'faiss-cpu==1.13.1',
+    'faiss-cpu==1.13.2',
     'Flask==3.1.2',
     'Flask-Cors==6.0.1',
     'flask_sock==0.7.0',
@@ -35,7 +35,7 @@ dependencies = [
     'codeattack @ git+https://github.com/marcorosa/CodeAttack',
     'gptfuzzer @ git+https://github.com/marcorosa/GPTFuzz@no-vllm',
     'garak==0.11.0',
-    'sentence-transformers==5.1.2',
+    'sentence-transformers==5.2.0',
 ]
 
 [project.optional-dependencies]
