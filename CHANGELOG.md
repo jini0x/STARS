@@ -1,3 +1,14 @@
+# Version: v0.6.5
+
+* [#168](https://github.com/SAP/STARS/pull/168): Bump weasyprint from 66.0 to 67.0 in /backend-agent
+* [#169](https://github.com/SAP/STARS/pull/169): Bump faiss-cpu from 1.13.0 to 1.13.1 in /backend-agent
+* [#171](https://github.com/SAP/STARS/pull/171): Bump sentence-transformers from 5.1.2 to 5.2.0 in /backend-agent
+* [#173](https://github.com/SAP/STARS/pull/173): Bump sap-ai-sdk-gen[all] from 5.9.0 to 5.10.0 in /backend-agent
+* [#174](https://github.com/SAP/STARS/pull/174): Bump faiss-cpu from 1.13.1 to 1.13.2 in /backend-agent
+* [#175](https://github.com/SAP/STARS/pull/175): Bump qs and body-parser in /frontend
+* [#177](https://github.com/SAP/STARS/pull/177): Weight dialog fixes
+
+
 # Version: v0.6.4
 
 * [#148](https://github.com/SAP/STARS/pull/148): Bump js-yaml from 4.1.0 to 4.1.1 in /frontend
