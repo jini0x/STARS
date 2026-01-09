@@ -50,6 +50,7 @@ AICORE_MODELS = {
         'anthropic--claude-4-sonnet',
         'anthropic--claude-4-opus',
         'anthropic--claude-4.5-sonnet',
+        'anthropic--claude-4.5-haiku',
     ],
     'azure-openai':
     [
