@@ -23,19 +23,11 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(status.trace_logging)
 
 AICORE_MODELS = {
-    'aicore-ibm':
-    [
-        'ibm--granite-13b-chat'
-    ],
     'aicore-mistralai':
     [
         'mistralai--mistral-large-instruct',
         'mistralai--mistral-medium-instruct',
         'mistralai--mistral-small-instruct',
-    ],
-    'aicore-opensource':
-    [
-        'meta--llama3.1-70b-instruct',
     ],
     'aws-bedrock':
     [
@@ -51,6 +43,7 @@ AICORE_MODELS = {
         'anthropic--claude-4-opus',
         'anthropic--claude-4.5-sonnet',
         'anthropic--claude-4.5-haiku',
+        'anthropic--claude-4.5-opus',
     ],
     'azure-openai':
     [
