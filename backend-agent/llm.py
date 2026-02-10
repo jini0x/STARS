@@ -88,28 +88,28 @@ class LLM(abc.ABC):
         Useful because the user can specify only the name in the agent.
         """
         # Foundation-models scenarios in AI Core
-        if model_name in AICORE_MODELS['azure-openai']:
+        if model_name in AICORE_MODELS.get('azure-openai', []):
             return AICoreOpenAILLM(model_name)
         # IBM models are compatible with OpenAI completion API
-        if model_name in AICORE_MODELS['aicore-ibm']:
+        if model_name in AICORE_MODELS.get('aicore-ibm', []):
             return AICoreOpenAILLM(model_name)
-        if model_name in AICORE_MODELS['aicore-opensource']:
+        if model_name in AICORE_MODELS.get('aicore-opensource', []):
             return AICoreOpenAILLM(model_name, False)
         # Mistral models are compatible with OpenAI completion API
-        if model_name in AICORE_MODELS['aicore-mistralai']:
+        if model_name in AICORE_MODELS.get('aicore-mistralai', []):
             return AICoreOpenAILLM(model_name, False)
         # Perplexity models are compatible with OpenAI completion API
-        if model_name in AICORE_MODELS['perplexity-ai']:
+        if model_name in AICORE_MODELS.get('perplexity-ai', []):
             return AICoreOpenAILLM(model_name)
 
         # Non OpenAI-compatible models in AI Core
-        if model_name in AICORE_MODELS['aws-bedrock']:
+        if model_name in AICORE_MODELS.get('aws-bedrock', []):
             if 'titan' in model_name:
                 # Titan models don't support system prompts
                 return AICoreAmazonBedrockLLM(model_name, False)
             else:
                 return AICoreAmazonBedrockLLM(model_name)
-        if model_name in AICORE_MODELS['gcp-vertexai']:
+        if model_name in AICORE_MODELS.get('gcp-vertexai', []):
             return AICoreGoogleVertexLLM(model_name)
 
         # Custom models
