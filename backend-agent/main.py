@@ -1,16 +1,18 @@
-import json
 import os
+<<<<<<< HEAD
 from argparse import Namespace
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
+=======
+from importlib.metadata import version
+>>>>>>> origin/develop
 
 from dotenv import load_dotenv
-from flask import abort, jsonify, request, send_file
 from flask_cors import CORS
 from flask_sock import Sock
-from sqlalchemy import select
 
 from app import create_app
+<<<<<<< HEAD
 from app.db.models import Attack, ModelAttackScore, TargetModel, db
 from attack import AttackSuite
 from attack_result import SuiteResult
@@ -21,31 +23,43 @@ try:
     __version__ = version('stars')
 except PackageNotFoundError:
     __version__ = '0.6.0'  # Fallback to pyproject.toml version
+=======
+from app.routes import register_routes
+from status import LangchainStatusCallbackHandler
+
+# -----------------------------
+# Version & Environment Setup
+# -----------------------------
+__version__ = version('stars')
+>>>>>>> origin/develop
 load_dotenv()
 
+# -----------------------------
+# Optional Agent Initialization
+# -----------------------------
+agent_instance = None
 if not os.getenv('DISABLE_AGENT'):
-    from agent import agent
-#############################################################################
-#                            Flask web server                               #
-#############################################################################
+    from agent import agent as agent_instance
 
-# app = Flask(__name__)
+# -----------------------------
+# Flask App & WebSocket Setup
+# -----------------------------
 app = create_app()
+sock = Sock(app)
 
 # Configure CORS with allowed origins, if any
 allowed_origins = os.getenv('ALLOWED_ORIGINS', '').split(',')
 # Clean up empty strings from allowed_origins
 allowed_origins = [origin.strip() for origin in allowed_origins
                    if origin.strip()]
-# Configure CORS
 if allowed_origins:
     CORS(app, resources={r"/*": {"origins": allowed_origins}})
 else:
     CORS(app)
 
-sock = Sock(app)
-
-# Langfuse can be used to analyze tracings and help in debugging.
+# ---------------------------------------------------
+# Langfuse to analyze tracings and help in debugging.
+# ---------------------------------------------------
 langfuse_handler = None
 if os.getenv('ENABLE_LANGFUSE'):
     from langfuse.callback import CallbackHandler
@@ -64,7 +78,9 @@ callbacks = {'callbacks': [langfuse_handler, status_callback_handler]
              } if langfuse_handler else {
                  'callbacks': [status_callback_handler]}
 
+register_routes(app, sock, agent_instance, callbacks)
 
+<<<<<<< HEAD
 def send_intro(sock):
     """
     Sends the intro via the websocket connection.
@@ -522,6 +538,11 @@ def get_available_policies():
         return jsonify({'error': str(e)}), 500
 
 
+=======
+# -----------------------------
+# Main Server Entry
+# -----------------------------
+>>>>>>> origin/develop
 if __name__ == '__main__':
     if not os.getenv('API_KEY'):
         print('No API key is set! Access is unrestricted.')

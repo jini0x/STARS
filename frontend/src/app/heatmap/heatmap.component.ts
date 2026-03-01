@@ -249,11 +249,9 @@ export class HeatmapComponent implements AfterViewInit, OnInit {
       }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result === true) {
-        // Reload the heatmap data after weights successfully updated
+    dialogRef.afterClosed().subscribe(() => {
+        // Reload the heatmap data after weights successfully updated or canceled
         this.loadHeatmapData();
-      }
     });
   }
 }

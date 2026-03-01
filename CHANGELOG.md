@@ -1,3 +1,79 @@
+# Version: v0.6.6
+
+* [#182](https://github.com/SAP/STARS/pull/182): Bump pypdf from 6.0.0 to 6.6.0 in /backend-agent
+* [#183](https://github.com/SAP/STARS/pull/183): Bump unstructured from 0.18.21 to 0.18.27 in /backend-agent
+* [#185](https://github.com/SAP/STARS/pull/185): Bump filelock from 3.19.1 to 3.20.3 in /backend-agent
+* [#186](https://github.com/SAP/STARS/pull/186): Bump azure-core from 1.35.0 to 1.38.0 in /backend-agent
+* [#187](https://github.com/SAP/STARS/pull/187): Bump pyasn1 from 0.6.1 to 0.6.2 in /backend-agent
+* [#189](https://github.com/SAP/STARS/pull/189): Bump weasyprint from 67.0 to 68.0 in /backend-agent
+* [#191](https://github.com/SAP/STARS/pull/191): Bump lodash from 4.17.21 to 4.17.23 in /frontend
+* [#192](https://github.com/SAP/STARS/pull/192): Bump weasyprint from 67.0 to 68.0 in /backend-agent
+* [#193](https://github.com/SAP/STARS/pull/193): Bump pypdf from 6.0.0 to 6.6.2 in /backend-agent
+* [#194](https://github.com/SAP/STARS/pull/194): Bump python-multipart from 0.0.20 to 0.0.22 in /backend-agent
+* [#196](https://github.com/SAP/STARS/pull/196): Bump sentence-transformers from 5.2.0 to 5.2.2 in /backend-agent
+* [#197](https://github.com/SAP/STARS/pull/197): Bump unstructured from 0.18.27 to 0.18.31 in /backend-agent
+* [#199](https://github.com/SAP/STARS/pull/199): Bump protobuf from 5.29.5 to 5.29.6 in /backend-agent
+* [#201](https://github.com/SAP/STARS/pull/201): Bump langsmith from 0.4.23 to 0.6.3 in /backend-agent
+
+
+# Version: v0.6.5
+
+* [#168](https://github.com/SAP/STARS/pull/168): Bump weasyprint from 66.0 to 67.0 in /backend-agent
+* [#169](https://github.com/SAP/STARS/pull/169): Bump faiss-cpu from 1.13.0 to 1.13.1 in /backend-agent
+* [#171](https://github.com/SAP/STARS/pull/171): Bump sentence-transformers from 5.1.2 to 5.2.0 in /backend-agent
+* [#173](https://github.com/SAP/STARS/pull/173): Bump sap-ai-sdk-gen[all] from 5.9.0 to 5.10.0 in /backend-agent
+* [#174](https://github.com/SAP/STARS/pull/174): Bump faiss-cpu from 1.13.1 to 1.13.2 in /backend-agent
+* [#175](https://github.com/SAP/STARS/pull/175): Bump qs and body-parser in /frontend
+* [#177](https://github.com/SAP/STARS/pull/177): Weight dialog fixes
+
+
+# Version: v0.6.4
+
+* [#148](https://github.com/SAP/STARS/pull/148): Bump js-yaml from 4.1.0 to 4.1.1 in /frontend
+* [#149](https://github.com/SAP/STARS/pull/149): Bump ollama from 0.6.0 to 0.6.1 in /backend-agent
+* [#150](https://github.com/SAP/STARS/pull/150): Bump unstructured from 0.18.15 to 0.18.20 in /backend-agent
+* [#151](https://github.com/SAP/STARS/pull/151): Bump the js-dependencies group across 1 directory with 24 updates
+* [#152](https://github.com/SAP/STARS/pull/152): Bump js-yaml from 4.1.0 to 4.1.1 in /frontend
+* [#153](https://github.com/SAP/STARS/pull/153): Bump actions/checkout from 5 to 6
+* [#154](https://github.com/SAP/STARS/pull/154): Bump faiss-cpu from 1.12.0 to 1.13.0 in /backend-agent
+* [#157](https://github.com/SAP/STARS/pull/157): Bump node-forge from 1.3.1 to 1.3.2 in /frontend
+* [#159](https://github.com/SAP/STARS/pull/159): Bump unstructured from 0.18.20 to 0.18.21 in /backend-agent
+* [#163](https://github.com/SAP/STARS/pull/163): Bump express in /frontend
+* [#166](https://github.com/SAP/STARS/pull/166): Update angular packages
+
+
+# Version: v0.6.3
+
+* [#139](https://github.com/SAP/STARS/pull/139): Add perplexity model family
+* [#140](https://github.com/SAP/STARS/pull/140): Bump python-dotenv from 1.1.1 to 1.2.1 in /backend-agent
+* [#141](https://github.com/SAP/STARS/pull/141): Bump sentence-transformers from 5.1.1 to 5.1.2 in /backend-agent
+* [#143](https://github.com/SAP/STARS/pull/143): Bump sap-ai-sdk-gen[all] from 5.7.5 to 5.8.0 in /backend-agent
+* [#144](https://github.com/SAP/STARS/pull/144): Bump the js-dependencies group across 1 directory with 23 updates
+
+
+# Version: v0.6.2
+
+* [#125](https://github.com/SAP/STARS/pull/125): Re organize backend
+* [#136](https://github.com/SAP/STARS/pull/136): Bump actions/setup-node from 5 to 6
+* [#137](https://github.com/SAP/STARS/pull/137): Bump the js-dependencies group in /frontend with 17 updates
+
+
+# Version: v0.6.1
+
+* [#112](https://github.com/SAP/STARS/pull/112): Bump sentence-transformers from 5.1.0 to 5.1.1 in /backend-agent
+* [#118](https://github.com/SAP/STARS/pull/118): Bump pandas from 2.3.2 to 2.3.3 in /backend-agent
+* [#119](https://github.com/SAP/STARS/pull/119): Bump tensorflow from 2.19.1 to 2.20.0 in /backend-agent
+* [#120](https://github.com/SAP/STARS/pull/120): Bump sentence-transformers from 5.1.0 to 5.1.1 in /backend-agent
+* [#121](https://github.com/SAP/STARS/pull/121): Bump langchain-community from 0.3.29 to 0.3.30 in /backend-agent
+* [#123](https://github.com/SAP/STARS/pull/123): [chore] Optimize k8s steps in GHA
+* [#124](https://github.com/SAP/STARS/pull/124): Update models with note 26-09-25
+* [#130](https://github.com/SAP/STARS/pull/130): Bump astral-sh/setup-uv from 6 to 7
+* [#131](https://github.com/SAP/STARS/pull/131): Bump langchain-core from 0.3.76 to 0.3.79 in /backend-agent
+* [#132](https://github.com/SAP/STARS/pull/132): Bump langchain-community from 0.3.30 to 0.3.31 in /backend-agent
+* [#133](https://github.com/SAP/STARS/pull/133): Bump sap-ai-sdk-gen[all] from 5.6.3 to 5.7.5 in /backend-agent
+* [#134](https://github.com/SAP/STARS/pull/134): Bump the js-dependencies group across 1 directory with 24 updates
+
+
 # Version: v0.6.0
 
 * [#93](https://github.com/SAP/STARS/pull/93): Add 2 PyRIT orchestrators ((Crescendo, PAIR)) and re-strucutre PyRIT code.
